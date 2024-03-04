@@ -8,21 +8,36 @@ import { Toggle } from "@/components/ui/toggle";
 import { Checkbox } from "@/components/ui/checkbox";
 import React from "react";
 import api from "./api";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 export function Component() {
+  const [currentSectionIndex, setCurrentSectionIndex] = React.useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
   const [selectedOptions, setSelectedOptions] = React.useState(
-    Array(api.length).fill(null)
+    api.map((section) =>
+      section.questions.map((question) =>
+        question.Options ? question.Options.map(() => false) : []
+      )
+    )
   );
-
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < api.length - 1) {
+    const currentSection = api[currentSectionIndex];
+    if (currentQuestionIndex < currentSection.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else if (currentSectionIndex < api.length - 1) {
+      setCurrentSectionIndex(currentSectionIndex + 1);
+      setCurrentQuestionIndex(0);
     }
   };
 
   const handlePreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+    } else if (currentSectionIndex > 0) {
+      setCurrentSectionIndex(currentSectionIndex - 1);
+      setCurrentQuestionIndex(
+        api[currentSectionIndex - 1].questions.length - 1
+      );
     }
   };
 
@@ -31,35 +46,78 @@ export function Component() {
   const toggleDarkMode = () => {
     setLightMode(!lightmode);
   };
-
-  const handleOptionSelect = (optionIndex: any) => {
-    const updatedSelectedOptions = [...selectedOptions];
-    updatedSelectedOptions[currentQuestionIndex] =
-      api[currentQuestionIndex].Options[optionIndex];
-    setSelectedOptions(updatedSelectedOptions);
+  const handleOptionSelect = (optionIndex: number) => {
+    setSelectedOptions((prevSelectedOptions) => {
+      const newSelectedOptions = [...prevSelectedOptions];
+      newSelectedOptions[currentSectionIndex][currentQuestionIndex][
+        optionIndex
+      ] =
+        !newSelectedOptions[currentSectionIndex][currentQuestionIndex][
+          optionIndex
+        ];
+      return newSelectedOptions;
+    });
   };
 
   const handleSubmit = () => {
-    console.log(selectedOptions);
+    const doc = new jsPDF();
+
+    const tableData = api
+      .map((section: any, sectionIndex: any) => {
+        return section.questions.map((question: any, questionIndex: any) => {
+          if (
+            question.Options === undefined ||
+            selectedOptions[sectionIndex][questionIndex] === undefined
+          )
+            return null;
+          const answerIndex =
+            selectedOptions[sectionIndex][questionIndex].indexOf(true);
+          const answer =
+            answerIndex !== -1 ? question.Options[answerIndex] : "No answer";
+          return {
+            section: section.title,
+            question: question.title,
+            answer: answer,
+          };
+        });
+      })
+      .flat()
+      .filter((data) => data !== null);
+
+    autoTable(doc, {
+      head: [["Section", "Question", "Answer"]],
+      body: tableData,
+    });
+
+    doc.save("Survey-Answers.pdf");
   };
 
-  const currentQuestion = api[currentQuestionIndex];
+  const currentSection = api[currentSectionIndex];
+  const currentQuestion = currentSection.questions[currentQuestionIndex];
 
   return (
-    <div className="flex flex-col min-h-screen w-full h-full dark:bg-gray-800">
-      <header className={`p-4 ${lightmode ? "bg-gray-900" : "bg-white"}`}>
-        <div className="container flex items-start justify-end gap-4 text-white">
+    <div
+      className={`flex flex-col min-h-screen w-full h-full ${
+        lightmode ? "bg-white" : "dark:bg-gray-800"
+      }`}
+    >
+      {" "}
+      <header className={`p-4 ${lightmode ? "bg-white" : "bg-gray-900"}`}>
+        <div className="container flex items-start justify-between gap-4 text-white">
+          <img
+            src={lightmode ? "/images/elamed.jpg" : "/images/elameddark.jpg"}
+            alt="Logo"
+            className="h-10 w-auto"
+          />{" "}
           <div className="flex items-start gap-4">
             <button onClick={toggleDarkMode} aria-label="Toggle dark mode">
               {lightmode ? (
                 <>
-                  <SunIcon className="h-5 w-5 text-yellow-400" />
-                  Light Mode
+                  <MoonIcon className="h-5 w-5 text-gray-300" />
                 </>
               ) : (
                 <>
-                  <MoonIcon className="h-5 w-5 text-gray-300" />
-                  Dark Mode
+                  <SunIcon className="h-5 w-5 text-yellow-400" />
                 </>
               )}
             </button>
@@ -68,21 +126,68 @@ export function Component() {
       </header>
       <main className="flex-1 py-8">
         <div className="container flex flex-col gap-4">
-          <div className="p-4 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-800">
-            <h1 className="text-3xl font-bold dark:text-white">
+          <div
+            className={`p-4 border rounded-lg ${
+              lightmode
+                ? "border-gray-200 bg-white text-black"
+                : "dark:bg-gray-700 dark:border-gray-800 dark:text-gray-300"
+            }`}
+          >
+            <h1
+              className={`text-3xl font-bold ${
+                lightmode ? "text-black" : "dark:text-white"
+              }`}
+            >
               {currentQuestion.Question}
             </h1>
-            <p className="text-lg dark:text-gray-300">
+            <h2
+              className={`text-xl font-medium ${
+                lightmode ? "text-black" : "dark:text-gray-300"
+              }`}
+            >
+              {currentSectionIndex + 1} of {api.length} sections
+            </h2>
+            <p
+              className={`text-lg ${
+                lightmode ? "text-black" : "dark:text-gray-300"
+              }`}
+            >
+              {currentQuestionIndex + 1} of {currentSection.questions.length}{" "}
+              questions
+            </p>
+            <p
+              className={`text-lg ${
+                lightmode ? "text-black" : "dark:text-gray-300"
+              }`}
+            >
+              {currentSection.section}
+            </p>
+
+            <p
+              className={`text-lg ${
+                lightmode ? "text-black" : "dark:text-gray-300"
+              }`}
+            >
               Choose the correct option from the options below.
             </p>
           </div>
           <div className="flex flex-col gap-4">
             <div>
-              <ul className="items-center w-full text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg sm:flex dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                {api[currentQuestionIndex].Options.map((option, index) => (
+              <ul
+                className={`items-center w-full text-sm font-medium bg-white border border-gray-200 rounded-lg sm:flex ${
+                  lightmode
+                    ? "text-gray-900"
+                    : "dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                }`}
+              >
+                {api[currentSectionIndex]?.questions[
+                  currentQuestionIndex
+                ]?.Options?.map((option, index) => (
                   <li
                     key={index}
-                    className="w-full border-b border-gray-200 sm:border-b-0 sm:border-r dark:border-gray-600"
+                    className={`w-full border-b sm:border-b-0 sm:border-r ${
+                      lightmode ? "border-gray-200" : "dark:border-gray-600"
+                    }`}
                   >
                     <div className="flex items-center ps-3">
                       <input
@@ -90,11 +195,22 @@ export function Component() {
                         type="checkbox"
                         value={option}
                         onChange={() => handleOptionSelect(index)}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                        checked={
+                          selectedOptions[currentSectionIndex][
+                            currentQuestionIndex
+                          ][index]
+                        }
+                        className={`w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 ${
+                          lightmode
+                            ? "bg-gray-100"
+                            : "dark:bg-gray-600 dark:border-gray-500"
+                        }`}
                       />
                       <label
                         htmlFor={`react-checkbox-list-${currentQuestionIndex}-${index}`}
-                        className="w-full py-3 ms-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+                        className={`w-full py-3 ms-2 text-sm font-medium ${
+                          lightmode ? "text-gray-900" : "dark:text-gray-300"
+                        }`}
                       >
                         {option}
                       </label>
@@ -102,27 +218,27 @@ export function Component() {
                   </li>
                 ))}
               </ul>
-              <div className="container flex items-start justify-end gap-4 text-white mt-8">
+              <div className="container flex items-start justify-end gap-4 mt-8">
                 <div className="flex items-start gap-4">
-                  {currentQuestionIndex > 0 && (
-                    <button
-                      onClick={handlePreviousQuestion}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md"
-                    >
-                      Previous
-                    </button>
-                  )}
-                  {currentQuestionIndex < api.length - 1 ? (
+                  {currentQuestionIndex <
+                    api[currentSectionIndex].questions.length - 1 ||
+                  currentSectionIndex < api.length - 1 ? (
                     <button
                       onClick={handleNextQuestion}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                      className="px-4 py-2 text-white rounded-md"
+                      style={{
+                        backgroundColor: lightmode ? "blue" : "darkblue",
+                      }}
                     >
                       Next
                     </button>
                   ) : (
                     <button
                       onClick={handleSubmit}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                      className="px-4 py-2 text-white rounded-md"
+                      style={{
+                        backgroundColor: lightmode ? "blue" : "darkblue",
+                      }}
                     >
                       Submit
                     </button>
@@ -133,72 +249,72 @@ export function Component() {
           </div>
         </div>
       </main>
-      <footer className="p-4 border-t"></footer>
     </div>
   );
-}
-function FlagIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-      <line x1="4" x2="4" y1="22" y2="15" />
-    </svg>
-  );
-}
 
-function SunIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="m4.93 4.93 1.41 1.41" />
-      <path d="m17.66 17.66 1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="m6.34 17.66-1.41 1.41" />
-      <path d="m19.07 4.93-1.41 1.41" />
-    </svg>
-  );
-}
+  function FlagIcon(props: any) {
+    return (
+      <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+        <line x1="4" x2="4" y1="22" y2="15" />
+      </svg>
+    );
+  }
 
-function MoonIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-    </svg>
-  );
+  function SunIcon(props: any) {
+    return (
+      <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2" />
+        <path d="M12 20v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="m17.66 17.66 1.41 1.41" />
+        <path d="M2 12h2" />
+        <path d="M20 12h2" />
+        <path d="m6.34 17.66-1.41 1.41" />
+        <path d="m19.07 4.93-1.41 1.41" />
+      </svg>
+    );
+  }
+
+  function MoonIcon(props: any) {
+    return (
+      <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+      </svg>
+    );
+  }
 }
