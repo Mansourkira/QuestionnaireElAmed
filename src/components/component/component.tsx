@@ -10,6 +10,8 @@ import React from "react";
 import api from "./api";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { FR, SA, USA } from "@sikka/alam";
+
 export function Component() {
   const [currentSectionIndex, setCurrentSectionIndex] = React.useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
@@ -94,7 +96,21 @@ export function Component() {
 
   const currentSection = api[currentSectionIndex];
   const currentQuestion = currentSection.questions[currentQuestionIndex];
-
+  const handleLanguageChange = (language: any) => {
+    switch (language) {
+      case "SA":
+        break;
+      case "USA":
+        console.log("USA");
+        break;
+      case "FR":
+        console.log("FR");
+        break;
+      default:
+        // Default language
+        break;
+    }
+  };
   return (
     <div
       className={`flex flex-col min-h-screen w-full h-full ${
@@ -121,6 +137,13 @@ export function Component() {
                 </>
               )}
             </button>
+
+            <div onClick={() => handleLanguageChange("USA")}>
+              <USA />
+            </div>
+            <div onClick={() => handleLanguageChange("FR")}>
+              <FR />
+            </div>
           </div>
         </div>
       </header>
@@ -171,7 +194,7 @@ export function Component() {
               Choose the correct option from the options below.
             </p>
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 ">
             <div>
               <ul
                 className={`items-center w-full text-sm font-medium bg-white border border-gray-200 rounded-lg sm:flex ${
@@ -220,6 +243,17 @@ export function Component() {
               </ul>
               <div className="container flex items-start justify-end gap-4 mt-8">
                 <div className="flex items-start gap-4">
+                  {currentQuestionIndex > 0 || currentSectionIndex > 0 ? (
+                    <button
+                      onClick={handlePreviousQuestion}
+                      className="px-4 py-2 text-white rounded-md"
+                      style={{
+                        backgroundColor: lightmode ? "blue" : "darkblue",
+                      }}
+                    >
+                      Previous
+                    </button>
+                  ) : null}
                   {currentQuestionIndex <
                     api[currentSectionIndex].questions.length - 1 ||
                   currentSectionIndex < api.length - 1 ? (
