@@ -18,7 +18,7 @@ export function Component() {
   const [selectedOptions, setSelectedOptions] = React.useState(
     api.map((section) =>
       section.questions.map((question) =>
-        question.Options ? question.Options.map(() => false) : []
+        new Array(question?.Options?.length).fill(false)
       )
     )
   );
@@ -43,24 +43,26 @@ export function Component() {
     }
   };
 
+  const handleOptionSelect = (questionIndex: number, optionIndex: number) => {
+    setSelectedOptions((prevSelectedOptions) => {
+      // Copy the previous state
+      const newSelectedOptions = JSON.parse(
+        JSON.stringify(prevSelectedOptions)
+      );
+
+      // Update the selected option
+      newSelectedOptions[currentSectionIndex][questionIndex][optionIndex] =
+        !newSelectedOptions[currentSectionIndex][questionIndex][optionIndex];
+
+      // Return the new state
+      return newSelectedOptions;
+    });
+  };
   const [lightmode, setLightMode] = React.useState(false);
 
   const toggleDarkMode = () => {
     setLightMode(!lightmode);
   };
-  const handleOptionSelect = (optionIndex: number) => {
-    setSelectedOptions((prevSelectedOptions) => {
-      const newSelectedOptions = [...prevSelectedOptions];
-      newSelectedOptions[currentSectionIndex][currentQuestionIndex][
-        optionIndex
-      ] =
-        !newSelectedOptions[currentSectionIndex][currentQuestionIndex][
-          optionIndex
-        ];
-      return newSelectedOptions;
-    });
-  };
-
   const handleSubmit = () => {
     const doc = new jsPDF();
 
@@ -161,37 +163,29 @@ export function Component() {
                 lightmode ? "text-black" : "dark:text-white"
               }`}
             >
-              {currentQuestion.Question}
+              {currentSection.section}
             </h1>
             <h2
               className={`text-xl font-medium ${
                 lightmode ? "text-black" : "dark:text-gray-300"
               }`}
             >
-              {currentSectionIndex + 1} of {api.length} sections
+              {currentSectionIndex + 1} sur {api.length} sections{" "}
             </h2>
             <p
               className={`text-lg ${
                 lightmode ? "text-black" : "dark:text-gray-300"
               }`}
             >
-              {currentQuestionIndex + 1} of {currentSection.questions.length}{" "}
+              {currentQuestion.Question}
+            </p>
+            <p
+              className={`text-lg ${
+                lightmode ? "text-black" : "dark:text-gray-300"
+              }`}
+            >
+              {currentQuestionIndex + 1} sur {currentSection.questions.length}{" "}
               questions
-            </p>
-            <p
-              className={`text-lg ${
-                lightmode ? "text-black" : "dark:text-gray-300"
-              }`}
-            >
-              {currentSection.section}
-            </p>
-
-            <p
-              className={`text-lg ${
-                lightmode ? "text-black" : "dark:text-gray-300"
-              }`}
-            >
-              Choose the correct option from the options below.
             </p>
           </div>
           <div className="flex flex-col gap-4 ">
@@ -205,7 +199,7 @@ export function Component() {
               >
                 {api[currentSectionIndex]?.questions[
                   currentQuestionIndex
-                ]?.Options?.map((option, index) => (
+                ]?.Options?.map((option: any, index: any) => (
                   <li
                     key={index}
                     className={`w-full border-b sm:border-b-0 sm:border-r ${
@@ -217,7 +211,9 @@ export function Component() {
                         id={`react-checkbox-list-${currentQuestionIndex}-${index}`}
                         type="checkbox"
                         value={option}
-                        onChange={() => handleOptionSelect(index)}
+                        onChange={() =>
+                          handleOptionSelect(currentQuestionIndex, index)
+                        }
                         checked={
                           selectedOptions[currentSectionIndex][
                             currentQuestionIndex
