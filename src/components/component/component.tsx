@@ -11,8 +11,12 @@ import api from "./api";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FR, SA, USA } from "@sikka/alam";
+import * as Realm from "realm-web";
 
 export function Component() {
+  const REALM_APP_ID = "your-realm-app-id"; // e.g. myapp-abcde
+  const app = new Realm.App({ id: REALM_APP_ID });
+
   const [currentSectionIndex, setCurrentSectionIndex] = React.useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
   const [selectedOptions, setSelectedOptions] = React.useState(
@@ -63,10 +67,10 @@ export function Component() {
   const toggleDarkMode = () => {
     setLightMode(!lightmode);
   };
-  const handleSubmit = () => {
+  /* const handleSubmit = () => {
     const doc = new jsPDF();
-
-    const tableData = api
+    console.log("selected options : ", selectedOptions);
+      const tableData = api
       .map((section: any, sectionIndex: any) => {
         return section.questions.map((question: any, questionIndex: any) => {
           if (
@@ -93,9 +97,33 @@ export function Component() {
       body: tableData,
     });
 
-    doc.save("Survey-Answers.pdf");
-  };
+    doc.save("Survey-Answers.pdf");  
+  }; */
+  const handleSubmit = async () => {
+    console.log("selected options : ", selectedOptions);
 
+    // Log in to your Realm app
+    const credentials = Realm.Credentials.anonymous();
+    const user = await app.logIn(credentials);
+
+    // Get a MongoDB service client
+    const mongodb = app.services.mongodb("mongodb-atlas");
+
+    // Get a reference to the survey collection
+    const surveyCollection = mongodb
+      .db("your-database-name")
+      .collection("your-collection-name");
+
+    // Create a new document with the selected options
+    const doc = { selectedOptions };
+
+    // Insert the document into the collection
+    const result = await surveyCollection.insertOne(doc);
+
+    console.log(
+      `Successfully inserted document with _id: ${result.insertedId}`
+    );
+  };
   const currentSection = api[currentSectionIndex];
   const currentQuestion = currentSection.questions[currentQuestionIndex];
   const handleLanguageChange = (language: any) => {
@@ -264,7 +292,7 @@ export function Component() {
                     </button>
                   ) : (
                     <button
-                      onClick={handleSubmit}
+                      // onClick={handleSubmit}
                       className="px-4 py-2 text-white rounded-md"
                       style={{
                         backgroundColor: lightmode ? "blue" : "darkblue",
